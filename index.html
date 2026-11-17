@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>MIMIC — Game Off 2026</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#02141f; }
+  body {
+    font-family:"Courier New", ui-monospace, monospace;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+    touch-action:none; overscroll-behavior:none;
+  }
+  #wrap {
+    position:relative; height:100dvh; aspect-ratio:9/16; max-width:100vw;
+    margin:0 auto; overflow:hidden; background:#06283d;
+  }
+  canvas {
+    width:100%; height:100%; display:block;
+    image-rendering:pixelated; image-rendering:crisp-edges;
+    touch-action:none;
+  }
+  /* ---------- HUD ---------- */
+  #hud {
+    position:absolute; top:0; left:0; right:0; z-index:5;
+    display:flex; align-items:flex-start; justify-content:space-between;
+    padding:8px 10px 0; pointer-events:none; color:#eaf6ff;
+    text-shadow:1px 1px 0 #02141f;
+  }
+  #hearts { font-size:20px; letter-spacing:2px; color:#ff5d7a; line-height:1; }
+  #stageBox { text-align:center; flex:1; margin:0 8px; }
+  #stageName { font-size:13px; font-weight:bold; letter-spacing:2px; color:#ffe98a; }
+  #growthWrap {
+    height:8px; margin-top:4px; border:2px solid #eaf6ff; background:#02141f;
+    box-shadow:1px 1px 0 #02141f;
+  }
+  #growthBar { height:100%; width:0%; background:#7fe0a8; transition:width .15s; }
+  #scoreBox { text-align:right; font-size:13px; font-weight:bold; line-height:1.25; }
+  #scoreBox small { display:block; font-size:10px; color:#9fd4e8; font-weight:normal; }
+  /* ---------- Action buttons ---------- */
+  .abtn {
+    position:absolute; bottom:calc(18px + env(safe-area-inset-bottom, 0px)); z-index:6;
+    width:76px; height:76px; border-radius:50%;
+    border:3px solid #eaf6ff; background:rgba(2,20,31,.72); color:#eaf6ff;
+    font-family:inherit; font-size:13px; font-weight:bold; letter-spacing:1px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    touch-action:none; cursor:pointer; box-shadow:0 3px 0 rgba(0,0,0,.45);
+  }
+  .abtn small { font-size:9px; font-weight:normal; color:#9fd4e8; margin-top:2px; }
+  .abtn:active { transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,.45); }
+  #btnBlend { left:16px; }
+  #btnLure  { right:16px; }
+  #btnBlend.on { background:#2e7d4f; border-color:#7fe0a8; }
+  #btnLure.ready { background:#5a3fa0; border-color:#c9a8ff; }
+  #btnLure.cool { opacity:.55; }
+  #blendMeter {
+    position:absolute; left:16px; bottom:calc(100px + env(safe-area-inset-bottom, 0px));
+    width:76px; height:7px; z-index:6; border:2px solid #eaf6ff; background:#02141f;
+  }
+  #blendFill { height:100%; width:100%; background:#7fe0a8; }
+  #sndBtn {
+    position:absolute; top:52px; right:10px; z-index:6; pointer-events:auto;
+    background:rgba(2,20,31,.6); color:#9fd4e8; border:2px solid #9fd4e8;
+    font-family:inherit; font-size:10px; padding:3px 6px; letter-spacing:1px; cursor:pointer;
+  }
+  /* ---------- Banners / overlays ---------- */
+  #banner {
+    position:absolute; top:22%; left:0; right:0; z-index:7; text-align:center;
+    pointer-events:none; opacity:0; transition:opacity .25s;
+    color:#ffe98a; font-size:20px; font-weight:bold; letter-spacing:2px;
+    text-shadow:2px 2px 0 #02141f, -1px -1px 0 #02141f;
+  }
+  #banner small { display:block; font-size:12px; color:#eaf6ff; margin-top:6px; letter-spacing:1px; }
+  #banner.show { opacity:1; }
+  .screen {
+    position:absolute; inset:0; z-index:10; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;
+    background:rgba(2,20,31,.82); color:#eaf6ff; padding:24px;
+  }
+  .screen h1 {
+    font-size:52px; letter-spacing:10px; color:#7fe0a8;
+    text-shadow:3px 3px 0 #02141f, 0 0 24px rgba(127,224,168,.5);
+  }
+  .screen h2 { font-size:15px; color:#ffe98a; letter-spacing:3px; margin:6px 0 18px; font-weight:normal; }
+  .screen p { font-size:13px; line-height:1.75; color:#cfe8ff; max-width:300px; }
+  .screen p b { color:#ffe98a; }
+  .screen .keys { margin:14px 0 4px; font-size:12px; line-height:1.9; }
+  .screen .keys span { color:#7fe0a8; }
+  .bigbtn {
+    margin-top:22px; font-family:inherit; font-size:17px; font-weight:bold; letter-spacing:3px;
+    color:#02141f; background:#7fe0a8; border:3px solid #eaf6ff; padding:13px 30px;
+    cursor:pointer; box-shadow:0 4px 0 rgba(0,0,0,.5);
+  }
+  .bigbtn:active { transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,.5); }
+  #overStats { font-size:14px; line-height:2; margin-top:8px; }
+  #overStats b { color:#ffe98a; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="270" height="480"></canvas>
+
+  <div id="hud">
+    <div id="hearts">&#10084;&#10084;&#10084;</div>
+    <div id="stageBox">
+      <div id="stageName">FRY</div>
+      <div id="growthWrap"><div id="growthBar"></div></div>
+    </div>
+    <div id="scoreBox">0<small>BEST 0</small></div>
+  </div>
+  <button id="sndBtn">SND ON</button>
+
+  <div id="blendMeter"><div id="blendFill"></div></div>
+  <button class="abtn" id="btnBlend">BLEND<small>hide</small></button>
+  <button class="abtn ready" id="btnLure">LURE<small>attract</small></button>
+
+  <div id="banner"></div>
+
+  <div class="screen" id="screenStart">
+    <h1>MIMIC</h1>
+    <h2>EAT &middot; HIDE &middot; BECOME</h2>
+    <p>You are a tiny mimic fish. Eat what's <b>smaller</b> than you.
+    Dodge what's <b>bigger</b>. Grow, and unlock new disguises.</p>
+    <div class="keys">
+      <span>DRAG</span> to swim<br>
+      <span>BLEND</span> &mdash; turn into rock / coral / weed to hide<br>
+      <span>LURE</span> &mdash; flash a lure, pull prey in close
+    </div>
+    <p id="bestLine">BEST SCORE: 0</p>
+    <button class="bigbtn" id="btnStart">TAP TO SWIM</button>
+  </div>
+
+  <div class="screen hidden" id="screenOver">
+    <h1 style="color:#ff5d7a">EATEN!</h1>
+    <h2>THE REEF REMEMBERS YOU</h2>
+    <div id="overStats"></div>
+    <button class="bigbtn" id="btnAgain">SWIM AGAIN</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   MIMIC — Game Off 2026 (theme: SHIFT)
+   A Spore-like shapeshift fish game. Single file, mobile-first.
+   Eat smaller, dodge bigger, BLEND to hide, LURE to hunt.
+   ============================================================ */
+const W = 270, H = 480;
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+/* ---------------- config ---------------- */
+const STAGES = [
+  { name:'FRY',        len:12, eats:10, color:'#ffb347', belly:'#ffe0a3', fin:'#ff8c1a',
+    blend:'Pebble',  blendColor:'#9aa0a6', lure:'Wiggle',       lureColor:'#fff3b0' },
+  { name:'REEF FISH',  len:18, eats:16, color:'#3fa7ff', belly:'#bfe6ff', fin:'#1a6fd4',
+    blend:'Coral',   blendColor:'#ff7fa5', lure:'Morsel',       lureColor:'#ffb3c8' },
+  { name:'HUNTER',     len:26, eats:22, color:'#9b5cff', belly:'#d9b8ff', fin:'#6a2fd4',
+    blend:'Seaweed', blendColor:'#3fbf5a', lure:'Angler Light', lureColor:'#c9f7ff' },
+  { name:'APEX MIMIC', len:36, eats:999,color:'#ff4d4d', belly:'#ffd24d', fin:'#b31b1b',
+    blend:'Rock',    blendColor:'#6b6f75', lure:'Giant Shadow', lureColor:'#ff5d7a' },
+];
+/* fish types that spawn in the wild: [name, len, color, belly, speed, predator?] */
+const FISH_TYPES = [
+  { name:'plankton',  len:3,  color:'#ffe98a', belly:'#fff8c9', speed:14 },
+  { name:'shrimp',    len:5,  color:'#ff9db1', belly:'#ffd3dd', speed:24 },
+  { name:'minnow',    len:8,  color:'#cfe8ff', belly:'#ffffff', speed:32 },
+  { name:'sardine',   len:11, color:'#ffd24d', belly:'#fff3b0', speed:38 },
+  { name:'damsel',    len:15, color:'#7fe0a8', belly:'#d8ffe9', speed:42 },
+  { name:'grunt',     len:20, color:'#ff9a3d', belly:'#ffd9a8', speed:46 },
+  { name:'snapper',   len:26, color:'#ff6b6b', belly:'#ffc9c9', speed:50 },
+  { name:'eel',       len:34, color:'#7a5cff', belly:'#c9b8ff', speed:56, predator:true, slim:true },
+  { name:'barracuda', len:38, color:'#8a93a6', belly:'#d5dbe8', speed:60, predator:true },
+  { name:'shark',     len:50, color:'#5a6b8a', belly:'#aab6cc', speed:58, predator:true },
+];
+const LURE_CD = 5, LURE_DUR = 3, LURE_RADIUS = 130;
+const SPOT_RADIUS = 88, SPOT_DELAY = 0.5, CHASE_LEASH = 4;
+
+/* ---------------- state ---------------- */
+let state = 'menu';            // menu | playing | over
+let score = 0;
+let best = +(localStorage.getItem('mimic_best') || 0);
+let topStage = +(localStorage.getItem('mimic_stage') || 0);
+let hearts = 3;
+let time = 0, timeScale = 1;
+let chased = false, chaseWas = false;
+let bannerTimer = 0;
+let spawnTimer = 0;
+let shakeT = 0;
+let player, fish = [], parts = [], bubbles = [], decor = [];
+let pointer = { x: W/2, y: H*0.62, active:false };
+let muted = false;
+
+const $ = id => document.getElementById(id);
+const heartsEl = $('hearts'), stageEl = $('stageName'), growthEl = $('growthBar'),
+      scoreEl = $('scoreBox'), bannerEl = $('banner'),
+      btnBlend = $('btnBlend'), btnLure = $('btnLure'), blendFill = $('blendFill');
+
+/* ---------------- audio (tiny WebAudio blips) ---------------- */
+let AC = null;
+function audio(){ if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return AC; }
+function tone(f0, f1, dur, type, vol){
+  if(muted) return; const ac = audio(); if(!ac) return;
+  try{
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'square'; o.frequency.setValueAtTime(f0, ac.currentTime);
+    if(f1) o.frequency.exponentialRampToValueAtTime(Math.max(1,f1), ac.currentTime + dur);
+    g.gain.setValueAtTime(vol || 0.08, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + dur);
+  }catch(e){}
+}
+const sfx = {
+  eat(){ tone(620, 940, 0.09, 'square', 0.07); setTimeout(()=>tone(940,1240,0.08,'square',0.05), 40); },
+  shift(){ tone(280, 980, 0.22, 'sine', 0.09); },
+  hurt(){ tone(180, 55, 0.3, 'sawtooth', 0.1); },
+  spot(){ tone(220, 220, 0.09, 'square', 0.07); setTimeout(()=>tone(220,220,0.09,'square',0.07), 130); },
+  stage(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,f,0.14,'square',0.08), i*90)); },
+  lure(){ tone(880, 1320, 0.18, 'sine', 0.07); },
+};
+
+/* ---------------- helpers ---------------- */
+const rand = (a,b)=>a+Math.random()*(b-a);
+const clamp = (v,a,b)=>v<a?a:v>b?b:v;
+const dist = (ax,ay,bx,by)=>Math.hypot(ax-bx, ay-by);
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+/* ---------------- entities ---------------- */
+function newPlayer(){
+  return { x:W/2, y:H*0.62, vx:0, vy:0, dir:1, stage:0, growth:0,
+    len:STAGES[0].len, blend:false, blendMeter:100,
+    lureT:0, lureCd:0, invuln:0, popT:0, wag:0 };
+}
+function spawnFish(forceTier){
+  // tier: 'edible' | 'neutral' | 'predator'
+  let tier = forceTier;
+  if(!tier){
+    const r = Math.random();
+    const maxPred = 1 + player.stage;
+    const predCount = fish.filter(f=>f.predator).length;
+    if(r < 0.62) tier = 'edible';
+    else if(r < 0.82 || predCount >= maxPred) tier = 'neutral';
+    else tier = 'predator';
+  }
+  let pool;
+  if(tier === 'edible'){
+    pool = FISH_TYPES.filter(t => t.len < player.len*0.85 && !t.predator);
+    if(!pool.length) pool = [FISH_TYPES[0]];
+  } else if(tier === 'predator'){
+    pool = FISH_TYPES.filter(t => t.predator);
+  } else {
+    pool = FISH_TYPES.filter(t => t.len >= player.len*0.85 && t.len <= player.len*1.3 && !t.predator);
+    if(!pool.length) pool = FISH_TYPES.filter(t => !t.predator);
+  }
+  const t = pick(pool);
+  // spawn at a random edge, away from the player (predators keep more distance)
+  const minDist = tier === 'predator' ? 120 : 60;
+  let x, y, tries = 0;
+  do { x = rand(10, W-10); y = rand(40, H-40); tries++; }
+  while(dist(x,y,player.x,player.y) < minDist && tries < 12);
+  const dir = x < W/2 ? 1 : -1;
+  fish.push({ x, y, vx:0, vy:0, dir, len:t.len, color:t.color, belly:t.belly,
+    speed:t.speed, predator:!!t.predator, slim:!!t.slim, name:t.name,
+    state:'wander', wt:rand(0.5,2), tx:0, ty:0, wag:rand(0,6), teeth:t.predator,
+    spotT:0, chaseT:0, boredT:0 });
+}
+function seedWorld(){
+  fish = []; parts = []; bubbles = [];
+  // a few edible fish right near the player so the first eat is instant
+  for(let i=0;i<3;i++){
+    spawnFish('edible');
+    const f = fish[fish.length-1];
+    f.x = clamp(player.x + rand(-55,55), 12, W-12);
+    f.y = clamp(player.y + rand(-45,45), 44, H-50);
+  }
+  for(let i=0;i<9;i++) spawnFish('edible');
+  for(let i=0;i<3;i++) spawnFish('neutral');
+  spawnFish('predator');
+  // decor: rocks / coral / weed on the sand
+  decor = [];
+  for(let i=0;i<6;i++) decor.push({ kind: pick(['rock','coral','weed']), x: rand(8,W-8), s: rand(0.7,1.4), ph: rand(0,6) });
+}
+function burst(x, y, color, n, spd){
+  for(let i=0;i<n;i++){
+    const a = rand(0, Math.PI*2), s = rand(spd*0.3, spd);
+    parts.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s - 8, life: rand(0.3,0.7), t:0, color, size: rand(1,2.4) });
+  }
+}
+function ring(x, y, color, maxR){
+  parts.push({ x, y, vx:0, vy:0, life:0.45, t:0, color, size:2, ring:true, maxR: maxR||26 });
+}
+function addBubbles(x, y, n){
+  for(let i=0;i<n;i++) bubbles.push({ x: x+rand(-4,4), y: y+rand(-3,3), r: rand(1,2.6), vy: rand(-16,-30), vx: rand(-4,4), life: rand(0.8,1.6), t:0 });
+}
+function showBanner(main, sub, ms){
+  bannerEl.innerHTML = main + (sub ? '<small>'+sub+'</small>' : '');
+  bannerEl.classList.add('show');
+  bannerTimer = (ms||2200)/1000;
+}
+
+/* ---------------- game flow ---------------- */
+function startGame(){
+  audio(); // unlock audio on the gesture
+  player = newPlayer();
+  score = 0; hearts = 3; timeScale = 1;
+  seedWorld();
+  state = 'playing';
+  $('screenStart').classList.add('hidden');
+  $('screenOver').classList.add('hidden');
+  showBanner('SWIM!', 'Eat the small. Dodge the big.', 1800);
+  updateHUD();
+}
+function gameOver(){
+  state = 'over';
+  if(score > best){ best = score; localStorage.setItem('mimic_best', String(best)); }
+  $('overStats').innerHTML =
+    'SCORE <b>'+score+'</b><br>BEST <b>'+best+'</b><br>REACHED <b>'+STAGES[player.stage].name+'</b> (stage '+(player.stage+1)+' of 4)';
+  $('screenOver').classList.remove('hidden');
+  updateHUD();
+}
+function stageUp(){
+  player.stage++;
+  player.len = STAGES[player.stage].len;
+  player.growth = 0;
+  player.popT = 0.4;
+  hearts = Math.min(3, hearts+1); // growing heals a little
+  if(player.stage > topStage){ topStage = player.stage; localStorage.setItem('mimic_stage', String(topStage)); }
+  const st = STAGES[player.stage];
+  ring(player.x, player.y, '#ffe98a', 46);
+  burst(player.x, player.y, st.color, 16, 60);
+  addBubbles(player.x, player.y, 8);
+  sfx.stage();
+  if(player.stage >= STAGES.length-1){
+    showBanner('APEX MIMIC!', 'You are the biggest thing in the reef now.', 2800);
+  } else {
+    showBanner('GROW! &mdash; '+st.name, 'New form: '+st.blend+' blend &middot; '+st.lure+' lure', 2600);
+  }
+  updateHUD();
+}
+function eatFish(f){
+  score += 10 * (player.stage+1);
+  if(score > best){ best = score; localStorage.setItem('mimic_best', String(best)); } // live save
+  player.growth++;
+  player.popT = Math.max(player.popT, 0.12);
+  burst(f.x, f.y, f.color, 8, 46);
+  addBubbles(f.x, f.y, 4);
+  ring(f.x, f.y, '#ffffff', 14);
+  sfx.eat();
+  fish.splice(fish.indexOf(f), 1);
+  if(player.stage < STAGES.length-1 && player.growth >= STAGES[player.stage].eats) stageUp();
+  updateHUD();
+}
+function hurtBy(f){
+  hearts--;
+  player.invuln = 2.5;
+  f.boredT = 2.5; // the biter backs off — no chain-bites while you recover
+  shakeT = 0.3;
+  const a = Math.atan2(player.y - f.y, player.x - f.x);
+  player.vx = Math.cos(a)*150; player.vy = Math.sin(a)*150;
+  burst(player.x, player.y, '#ff5d7a', 10, 55);
+  sfx.hurt();
+  if(hearts <= 0){ updateHUD(); gameOver(); return; }
+  showBanner('OUCH!', hearts + (hearts===1 ? ' heart left' : ' hearts left'), 1200);
+  updateHUD();
+}
+
+/* ---------------- actions ---------------- */
+function toggleBlend(on){
+  if(state !== 'playing') return;
+  const want = (on === undefined) ? !player.blend : on;
+  if(want && !player.blend){
+    if(player.blendMeter < 15) return; // need some meter to start
+    player.blend = true;
+    ring(player.x, player.y, STAGES[player.stage].blendColor, 30);
+    burst(player.x, player.y, '#cfe8ff', 6, 30);
+    sfx.shift();
+  } else if(!want && player.blend){
+    player.blend = false;
+    ring(player.x, player.y, '#ffffff', 26);
+    sfx.shift();
+  }
+  player.popT = Math.max(player.popT, 0.18);
+  updateHUD();
+}
+function fireLure(){
+  if(state !== 'playing' || player.lureCd > 0) return;
+  player.lureT = LURE_DUR; player.lureCd = LURE_CD;
+  ring(player.x, player.y, STAGES[player.stage].lureColor, 44);
+  sfx.lure();
+  updateHUD();
+}
+
+/* ---------------- update ---------------- */
+function update(dt){
+  time += dt;
+  if(bannerTimer > 0){ bannerTimer -= dt; if(bannerTimer <= 0) bannerEl.classList.remove('show'); }
+  if(shakeT > 0) shakeT -= dt;
+
+  // ambient bubbles
+  if(Math.random() < dt*3) bubbles.push({ x: rand(6,W-6), y: H+4, r: rand(1,2.4), vy: rand(-14,-26), vx: rand(-3,3), life: rand(4,8), t:0 });
+  for(let i=bubbles.length-1;i>=0;i--){
+    const b = bubbles[i]; b.t += dt; b.x += b.vx*dt; b.y += b.vy*dt;
+    if(b.t > b.life || b.y < -6) bubbles.splice(i,1);
+  }
+  for(let i=parts.length-1;i>=0;i--){
+    const p = parts[i]; p.t += dt;
+    p.x += p.vx*dt; p.y += p.vy*dt; p.vy -= 6*dt;
+    if(p.t > p.life) parts.splice(i,1);
+  }
+
+  if(state !== 'playing') return;
+
+  // ---- player ----
+  const st = STAGES[player.stage];
+  const maxSpd = (116 + player.stage*4) * (player.blend ? 0.6 : 1);
+  let tx = pointer.x, ty = pointer.y;
+  if(window.MIMIC && MIMIC.debug.autoplay) autopilot();
+  const dx = tx - player.x, dy = ty - player.y, d = Math.hypot(dx,dy);
+  let dvx = 0, dvy = 0;
+  if(d > 4){
+    const sp = maxSpd * clamp(d/46, 0.3, 1);
+    dvx = dx/d*sp; dvy = dy/d*sp;
+  }
+  const k = Math.min(1, dt*7);
+  player.vx += (dvx - player.vx)*k;
+  player.vy += (dvy - player.vy)*k;
+  player.x = clamp(player.x + player.vx*dt, 8, W-8);
+  player.y = clamp(player.y + player.vy*dt, 30, H-16);
+  if(Math.abs(player.vx) > 6) player.dir = player.vx > 0 ? 1 : -1;
+  player.wag += dt * (4 + Math.hypot(player.vx, player.vy)*0.06);
+  if(player.popT > 0) player.popT -= dt;
+  if(player.invuln > 0) player.invuln -= dt;
+  if(player.lureT > 0) player.lureT -= dt;
+  if(player.lureCd > 0) player.lureCd -= dt;
+  if(player.blend){
+    player.blendMeter -= 22*dt;
+    if(player.blendMeter <= 0){ player.blendMeter = 0; toggleBlend(false); }
+  } else {
+    player.blendMeter = Math.min(100, player.blendMeter + 14*dt);
+  }
+
+  // ---- fish ----
+  chased = false;
+  const apex = player.stage >= STAGES.length-1;
+  for(let i=fish.length-1;i>=0;i--){
+    const f = fish[i];
+    f.wag += dt * (5 + Math.hypot(f.vx,f.vy)*0.05);
+    const r = f.len / player.len;
+    const edible = r < 0.85;
+    const dangerous = f.predator && r > 1.25 && !apex;
+    const apexEdible = apex && f.predator && r < 1.15;
+    const dp = dist(f.x, f.y, player.x, player.y);
+
+    // state machine
+    // A predator that is bored (leash expired, lost track, or just bit you)
+    // wanders AWAY from you for a while — it can never camp a corner forever.
+    if(f.boredT > 0){
+      f.boredT -= dt;
+      f.spotT = 0; f.chaseT = 0;
+      f.state = 'wander';
+      const a = Math.atan2(f.y - player.y, f.x - player.x);
+      f.tx = Math.cos(a); f.ty = Math.sin(a);
+    } else if(player.lureT > 0 && (edible || apexEdible) && dp < LURE_RADIUS){
+      f.state = 'attract';
+    } else if(dangerous && !player.blend && dp < SPOT_RADIUS){
+      // suspicion first: 0.5s of "?" before the chase — reaction time for the player
+      f.spotT += dt;
+      if(f.spotT >= SPOT_DELAY){
+        f.state = 'chase'; chased = true;
+        f.chaseT += dt;
+        if(f.chaseT > CHASE_LEASH){ f.boredT = 3; f.chaseT = 0; f.spotT = 0; f.state = 'wander'; }
+      } else {
+        f.state = 'suspect';
+      }
+    } else if((edible || apexEdible) && !player.blend && player.lureT <= 0 && dp < 48 && !apex){
+      f.state = 'flee';
+    } else if(apex && f.predator && dp < 70){
+      f.state = 'flee'; // predators fear the apex
+    } else {
+      if(f.state === 'chase'){ f.boredT = 2.5; } // lost track (blended / out of range)
+      f.spotT = 0; f.chaseT = 0;
+      f.state = 'wander'; f.wt = rand(0.4, 1.6);
+    }
+
+    let sp = f.speed, ax = 0, ay = 0;
+    if(f.state === 'chase'){
+      sp = Math.min(96, f.speed*1.6); // player (116+) can outrun a chase
+      ax = (player.x - f.x)/dp; ay = (player.y - f.y)/dp;
+    } else if(f.state === 'suspect'){
+      sp = f.speed*0.35; // slow menacing creep while it sizes you up
+      ax = (player.x - f.x)/dp; ay = (player.y - f.y)/dp;
+    } else if(f.state === 'flee'){
+      sp = f.speed*1.8;
+      ax = (f.x - player.x)/dp; ay = (f.y - player.y)/dp;
+    } else if(f.state === 'attract'){
+      sp = f.speed*1.5;
+      ax = (player.x - f.x)/dp; ay = (player.y - f.y)/dp;
+    } else {
+      f.wt -= dt;
+      if(f.wt <= 0){ f.wt = rand(0.8, 2.4); const a = rand(0, Math.PI*2); f.tx = Math.cos(a); f.ty = Math.sin(a)*0.6; }
+      ax = f.tx; ay = f.ty; sp = f.speed*0.55;
+      // steer back inside
+      if(f.x < 16) ax = 1; if(f.x > W-16) ax = -1;
+      if(f.y < 38) ay = 1; if(f.y > H-22) ay = -1;
+    }
+    const fk = Math.min(1, dt*3.5);
+    f.vx += (ax*sp - f.vx)*fk;
+    f.vy += (ay*sp - f.vy)*fk;
+    f.x += f.vx*dt; f.y += f.vy*dt;
+    f.x = clamp(f.x, 6, W-6); f.y = clamp(f.y, 34, H-12);
+    if(Math.abs(f.vx) > 4) f.dir = f.vx > 0 ? 1 : -1;
+
+    // collisions
+    const eatR = player.len*0.5 + f.len*0.4;
+    if((edible || apexEdible) && dp < eatR){ eatFish(f); continue; }
+    const biteR = player.len*0.42 + f.len*0.32;
+    if(dangerous && dp < biteR && player.invuln <= 0){ hurtBy(f); if(state !== 'playing') return; }
+  }
+  if(chased && !chaseWas) sfx.spot();
+  chaseWas = chased;
+
+  // ---- spawning: keep the reef busy ----
+  spawnTimer -= dt;
+  if(spawnTimer <= 0){
+    spawnTimer = 0.4;
+    const edibleCount = fish.filter(f => f.len < player.len*0.85 && !f.predator).length;
+    if(edibleCount < 9) spawnFish('edible');
+    else if(fish.length < 24) spawnFish();
+  }
+  updateHUD();
+}
+
+/* autopilot used by the headless play-test: same movement path as a finger */
+function autopilot(){
+  let nearest = null, nd = 1e9;
+  let threat = null, td = 1e9;
+  for(const f of fish){
+    const d = dist(f.x, f.y, player.x, player.y);
+    const r = f.len / player.len;
+    if(f.predator && r > 1.25 && d < td){ threat = f; td = d; }
+    if(r < 0.85 && d < nd){ nearest = f; nd = d; }
+  }
+  if(threat && td < 90){
+    // run away — but bias toward open water, never straight into a corner
+    const fx = player.x + (player.x - threat.x)*1.2;
+    const fy = player.y + (player.y - threat.y)*1.2;
+    pointer.x = clamp(fx*0.6 + (W/2)*0.4, 10, W-10);
+    pointer.y = clamp(fy*0.6 + (H*0.55)*0.4, 36, H-20);
+    if(td < 55 && player.blendMeter > 30) toggleBlend(true);
+  } else {
+    if(player.blend) toggleBlend(false);
+    if(nearest){ pointer.x = nearest.x; pointer.y = nearest.y; }
+    if(nearest && nd < 95 && player.lureCd <= 0) fireLure();
+  }
+}
+
+/* ---------------- drawing ---------------- */
+/* chunky pixel fish, drawn pointing right; flipped by facing */
+function drawFish(c, x, y, len, o){
+  const t = o.wag || 0, facing = o.facing || 1;
+  const slim = o.slim ? 0.55 : 1;
+  const h = len*0.30*slim;
+  c.save();
+  c.translate(Math.round(x), Math.round(y));
+  c.scale(facing, 1);
+  const pop = o.pop ? 1 + Math.sin(Math.min(1, o.pop/0.4)*Math.PI)*0.18 : 1;
+  c.scale(pop, pop);
+  // tail: 3 wagging columns
+  const wag = Math.sin(t*2.2)*Math.max(1, len*0.07);
+  const tl = Math.max(2, Math.round(len*0.3));
+  c.fillStyle = o.tail || o.color;
+  for(let i=0;i<tl;i++){
+    const th = h*(0.5 + 0.5*(1 - i/tl)) ;
+    const off = wag * (i/tl);
+    c.fillRect(-Math.round(len/2)-tl+i, Math.round(-th+off), 1, Math.round(th*2));
+  }
+  // dorsal fin
+  c.fillStyle = o.fin || o.color;
+  c.fillRect(Math.round(-len*0.08), Math.round(-h-2), Math.round(len*0.16), 2);
+  // body: tapered columns
+  for(let i=0;i<len;i++){
+    const u = (i+0.5)/len;
+    const hh = Math.max(1, h * Math.pow(Math.sin(Math.PI*Math.pow(u,0.9)), 0.75));
+    const bx = Math.round(i - len/2);
+    c.fillStyle = o.color;
+    c.fillRect(bx, Math.round(-hh), 1, Math.round(hh*2));
+    // belly: bottom half
+    c.fillStyle = o.belly;
+    c.fillRect(bx, 0, 1, Math.round(hh));
+  }
+  // stripe
+  if(o.stripe){
+    c.fillStyle = o.stripe;
+    for(let i=0;i<len;i++){
+      const u = (i+0.5)/len;
+      const hh = Math.max(1, h * Math.pow(Math.sin(Math.PI*Math.pow(u,0.9)), 0.75));
+      c.fillRect(Math.round(i-len/2), Math.round(-hh*0.45), 1, 1);
+    }
+  }
+  // teeth for predators
+  if(o.teeth){
+    c.fillStyle = '#ffffff';
+    const mx = Math.round(len*0.30);
+    c.fillRect(mx, Math.round(h*0.35), 1, 1);
+    c.fillRect(mx-2, Math.round(h*0.45), 1, 1);
+    c.fillRect(mx+1, Math.round(h*0.4), 1, 1);
+  }
+  // eye
+  const ex = Math.round(len*0.30), ey = Math.round(-h*0.35);
+  c.fillStyle = '#ffffff'; c.fillRect(ex, ey, 2, 2);
+  c.fillStyle = o.redEye ? '#ff2222' : '#111111'; c.fillRect(ex+1, ey, 1, 1);
+  c.restore();
+}
+function drawBlendForm(c, x, y, stage, t){
+  const st = STAGES[stage];
+  const col = st.blendColor;
+  c.save(); c.translate(Math.round(x), Math.round(y));
+  if(st.blend === 'Pebble'){
+    c.fillStyle = col;
+    c.fillRect(-5,-3,10,6); c.fillRect(-4,-4,8,8); c.fillRect(-3,-5,6,10);
+    c.fillStyle = '#d5d8db'; c.fillRect(-3,-4,3,2);
+  } else if(st.blend === 'Coral'){
+    c.fillStyle = col;
+    c.fillRect(-1,-8,2,12);
+    c.fillRect(-6,-6,5,2); c.fillRect(2,-7,5,2); c.fillRect(-7,-2,6,2); c.fillRect(2,-3,6,2);
+    c.fillRect(-6,-8,2,3); c.fillRect(5,-9,2,3);
+    c.fillStyle = '#ffd3e0'; c.fillRect(-1,-8,1,4);
+  } else if(st.blend === 'Seaweed'){
+    for(let s=-1;s<=1;s++){
+      c.fillStyle = s===0 ? col : '#2f9e4a';
+      const sway = Math.sin(t*2 + s*1.4)*2;
+      for(let j=0;j<10;j++){
+        c.fillRect(Math.round(s*5 + sway*(j/10)), -12+j, 2, 1);
+      }
+    }
+  } else { // Rock
+    c.fillStyle = col;
+    c.fillRect(-9,-5,18,10); c.fillRect(-7,-7,14,14); c.fillRect(-5,-8,10,16);
+    c.fillStyle = '#8a8f96'; c.fillRect(-6,-6,4,2); c.fillRect(1,-2,5,2);
+    c.fillStyle = '#4a4e54'; c.fillRect(-2,2,6,1);
+  }
+  c.restore();
+}
+function drawLure(c, x, y, stage, t){
+  const st = STAGES[stage];
+  const px = x + player.dir*player.len*0.4, py = y - player.len*0.35;
+  c.save();
+  if(st.lure === 'Wiggle'){
+    c.globalAlpha = 0.55 + 0.35*Math.sin(t*8);
+    c.fillStyle = st.lureColor;
+    c.fillRect(Math.round(px)-1, Math.round(py)-1, 3, 3);
+  } else if(st.lure === 'Morsel'){
+    const wob = Math.sin(t*6)*2;
+    c.strokeStyle = '#cfe8ff'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(px, py); c.lineTo(px+wob, py+6); c.stroke();
+    c.fillStyle = st.lureColor;
+    c.fillRect(Math.round(px+wob)-2, Math.round(py)+6, 4, 3);
+    c.fillStyle = '#ff5d7a'; c.fillRect(Math.round(px+wob)-1, Math.round(py)+7, 1, 1);
+  } else if(st.lure === 'Angler Light'){
+    const pulse = 0.6 + 0.4*Math.sin(t*7);
+    const g = c.createRadialGradient(px, py, 1, px, py, 16);
+    g.addColorStop(0, 'rgba(201,247,255,'+0.85*pulse+')');
+    g.addColorStop(1, 'rgba(201,247,255,0)');
+    c.fillStyle = g; c.fillRect(px-16, py-16, 32, 32);
+    c.strokeStyle = '#cfe8ff'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(px - player.dir*2, py+4); c.lineTo(px, py); c.stroke();
+    c.fillStyle = '#ffffff'; c.fillRect(Math.round(px)-2, Math.round(py)-2, 4, 4);
+  } else { // Giant Shadow
+    c.globalAlpha = 0.30 + 0.12*Math.sin(t*5);
+    c.fillStyle = '#1a0b1e';
+    const L = player.len*2.4;
+    c.beginPath();
+    c.ellipse(Math.round(x), Math.round(y), L/2, L*0.18, 0, 0, Math.PI*2);
+    c.fill();
+    c.globalAlpha = 1;
+    c.fillStyle = '#ff5d7a';
+    c.fillRect(Math.round(x + player.dir*player.len*0.3)-1, Math.round(y-3), 2, 2);
+  }
+  c.restore();
+}
+function render(){
+  ctx.save();
+  if(shakeT > 0) ctx.translate(Math.round(rand(-2,2)), Math.round(rand(-2,2)));
+
+  // water
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#0e5a7d'); g.addColorStop(0.55, '#083a56'); g.addColorStop(1, '#04263e');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // light rays
+  ctx.fillStyle = 'rgba(255,255,255,0.05)';
+  for(let i=0;i<3;i++){
+    const rx = 40 + i*80 + Math.sin(time*0.3 + i*2)*10;
+    ctx.beginPath(); ctx.moveTo(rx, 0); ctx.lineTo(rx+22, 0); ctx.lineTo(rx+52, H*0.7); ctx.lineTo(rx+8, H*0.7); ctx.closePath(); ctx.fill();
+  }
+
+  // sand
+  ctx.fillStyle = '#c2a878'; ctx.fillRect(0, H-24, W, 24);
+  ctx.fillStyle = '#a98f5f';
+  for(let i=0;i<14;i++) ctx.fillRect((i*37)%W, H-22+((i*13)%18), 3, 2);
+  ctx.fillStyle = '#d9c193'; ctx.fillRect(0, H-24, W, 2);
+
+  // decor
+  for(const d of decor){
+    const x = d.x, y = H-24;
+    if(d.kind === 'rock'){
+      ctx.fillStyle = '#5d6b78';
+      ctx.fillRect(Math.round(x-7*d.s), y-Math.round(7*d.s), Math.round(14*d.s), Math.round(7*d.s));
+      ctx.fillRect(Math.round(x-5*d.s), y-Math.round(10*d.s), Math.round(10*d.s), Math.round(4*d.s));
+    } else if(d.kind === 'coral'){
+      ctx.fillStyle = '#ff8fb0';
+      ctx.fillRect(Math.round(x-1), y-12, 2, 12);
+      ctx.fillRect(Math.round(x-6), y-8, 5, 2); ctx.fillRect(Math.round(x+2), y-9, 5, 2);
+    } else {
+      ctx.fillStyle = '#2f9e4a';
+      for(let s=-1;s<=1;s++){
+        const sway = Math.sin(time*1.6 + d.ph + s)*2;
+        for(let j=0;j<9;j++) ctx.fillRect(Math.round(x+s*4+sway*(j/9)), y-12+j, 2, 1);
+      }
+    }
+  }
+
+  // ambient bubbles
+  ctx.strokeStyle = 'rgba(207,232,255,0.5)'; ctx.lineWidth = 1;
+  for(const b of bubbles){
+    ctx.beginPath(); ctx.arc(Math.round(b.x), Math.round(b.y), b.r, 0, Math.PI*2); ctx.stroke();
+  }
+
+  if(state !== 'menu' && player){
+    // other fish
+    for(const f of fish){
+      drawFish(ctx, f.x, f.y, f.len, {
+        color:f.color, belly:f.belly, wag:f.wag, facing:f.dir,
+        slim:f.slim, teeth:f.teeth, redEye:f.predator, fin:'#00000022',
+        stripe: f.name==='sardine' ? '#e8a91c' : null,
+      });
+      // danger markers: "?" while sizing you up, "!" once it commits
+      const r = f.len / player.len;
+      if(f.predator && r > 1.25 && (f.state === 'chase' || f.state === 'suspect')){
+        ctx.fillStyle = f.state === 'chase' ? '#ff2222' : '#ffe98a';
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(f.state === 'chase' ? '!' : '?', Math.round(f.x), Math.round(f.y - f.len*0.28 - 8));
+      }
+    }
+
+    // player
+    const st = STAGES[player.stage];
+    const blink = player.invuln > 0 && Math.floor(time*12)%2 === 0;
+    if(!blink){
+      if(player.blend){
+        drawBlendForm(ctx, player.x, player.y, player.stage, time);
+        // subtle shimmer so the player can still find themself
+        ctx.fillStyle = 'rgba(255,255,255,'+(0.12+0.08*Math.sin(time*4))+')';
+        ctx.fillRect(Math.round(player.x)-1, Math.round(player.y)-9, 2, 2);
+      } else {
+        // faint halo: your eye always finds you in a busy reef
+        ctx.strokeStyle = 'rgba(255,255,255,'+(0.16+0.07*Math.sin(time*4)).toFixed(3)+')';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(Math.round(player.x), Math.round(player.y), Math.round(player.len*0.75)+3, 0, Math.PI*2); ctx.stroke();
+        drawFish(ctx, player.x, player.y, player.len, {
+          color: st.color, belly: st.belly, fin: st.fin, wag: player.wag,
+          facing: player.dir, pop: player.popT,
+          stripe: player.stage===1 ? '#1a6fd4' : player.stage===2 ? '#6a2fd4' : null,
+        });
+        if(player.lureT > 0) drawLure(ctx, player.x, player.y, player.stage, time);
+      }
+    }
+
+    // lure radius ring while active
+    if(player.lureT > 0){
+      ctx.strokeStyle = 'rgba(255,243,176,0.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(Math.round(player.x), Math.round(player.y),
+        LURE_RADIUS*(0.4 + 0.6*(1 - player.lureT/LURE_DUR)), 0, Math.PI*2); ctx.stroke();
+    }
+  }
+
+  // particles
+  for(const p of parts){
+    const a = 1 - p.t/p.life;
+    if(p.ring){
+      ctx.strokeStyle = p.color; ctx.globalAlpha = a; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(Math.round(p.x), Math.round(p.y), (p.maxR||26)*(p.t/p.life), 0, Math.PI*2); ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.globalAlpha = a; ctx.fillStyle = p.color;
+      ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // danger vignette
+  if(chased && state === 'playing'){
+    const a = 0.22 + 0.12*Math.sin(time*9);
+    ctx.fillStyle = 'rgba(255,34,34,'+a.toFixed(3)+')';
+    ctx.fillRect(0, 0, W, 5); ctx.fillRect(0, H-5, W, 5);
+    ctx.fillRect(0, 0, 5, H); ctx.fillRect(W-5, 0, 5, H);
+    ctx.fillStyle = '#ff5d7a';
+    ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('SPOTTED!', Math.round(W/2), 26);
+  }
+
+  ctx.restore();
+}
+
+/* ---------------- HUD (DOM writes only on change — cheap per frame) ---------------- */
+let hudCache = { hearts:-1, stage:-1, score:-1, blend:-1, lureCd:-1, meter:-1 };
+function updateHUD(){
+  if(!player) return;
+  if(hudCache.hearts !== hearts){
+    hudCache.hearts = hearts;
+    heartsEl.innerHTML = '&#10084;'.repeat(Math.max(0,hearts)) + '&#9825;'.repeat(Math.max(0,3-hearts));
+  }
+  const st = STAGES[player.stage];
+  if(hudCache.stage !== player.stage || hudCache.blend !== player.blend){
+    hudCache.stage = player.stage; hudCache.blend = player.blend;
+    stageEl.textContent = st.name + (player.blend ? ' \u00b7 '+st.blend.toUpperCase() : '');
+    btnBlend.querySelector('small').textContent = st.blend.toLowerCase();
+  }
+  growthEl.style.width = (player.stage >= STAGES.length-1 ? 100 : (player.growth/st.eats*100)) + '%';
+  if(hudCache.score !== score){
+    hudCache.score = score;
+    scoreEl.innerHTML = score + '<small>BEST ' + Math.max(best, score) + '</small>';
+  }
+  const meter = Math.round(player.blendMeter);
+  if(hudCache.meter !== meter){
+    hudCache.meter = meter;
+    blendFill.style.width = meter + '%';
+    blendFill.style.background = meter < 25 ? '#ff5d7a' : '#7fe0a8';
+  }
+  btnBlend.classList.toggle('on', player.blend);
+  const lureState = player.lureCd > 0 ? Math.ceil(player.lureCd) : 0;
+  if(hudCache.lureCd !== lureState){
+    hudCache.lureCd = lureState;
+    if(player.lureCd > 0){
+      btnLure.classList.remove('ready'); btnLure.classList.add('cool');
+      btnLure.innerHTML = 'LURE<small>'+Math.ceil(player.lureCd)+'s</small>';
+    } else {
+      btnLure.classList.add('ready'); btnLure.classList.remove('cool');
+      btnLure.innerHTML = 'LURE<small>'+STAGES[player.stage].lure.toLowerCase()+'</small>';
+    }
+  }
+}
+
+/* ---------------- input ---------------- */
+function toGame(e){
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left)/r.width*W, y: (e.clientY - r.top)/r.height*H };
+}
+cv.addEventListener('pointerdown', e=>{
+  e.preventDefault(); audio();
+  const p = toGame(e); pointer.x = p.x; pointer.y = p.y; pointer.active = true;
+  cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e=>{
+  if(!pointer.active) return;
+  e.preventDefault();
+  const p = toGame(e); pointer.x = p.x; pointer.y = p.y;
+});
+const endPointer = e=>{ pointer.active = false; };
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('contextmenu', e=>e.preventDefault());
+
+btnBlend.addEventListener('pointerdown', e=>{ e.preventDefault(); e.stopPropagation(); toggleBlend(); });
+btnLure.addEventListener('pointerdown', e=>{ e.preventDefault(); e.stopPropagation(); fireLure(); });
+$('btnStart').addEventListener('click', ()=>{ startGame(); });
+$('btnAgain').addEventListener('click', ()=>{ startGame(); });
+$('sndBtn').addEventListener('click', ()=>{
+  muted = !muted;
+  $('sndBtn').textContent = muted ? 'SND OFF' : 'SND ON';
+});
+window.addEventListener('keydown', e=>{
+  if(state !== 'playing') return;
+  const step = 26;
+  if(e.key === 'ArrowUp' || e.key === 'w'){ pointer.y = clamp(pointer.y-step, 30, H-16); pointer.active = true; }
+  if(e.key === 'ArrowDown' || e.key === 's'){ pointer.y = clamp(pointer.y+step, 30, H-16); pointer.active = true; }
+  if(e.key === 'ArrowLeft' || e.key === 'a'){ pointer.x = clamp(pointer.x-step, 8, W-8); pointer.active = true; }
+  if(e.key === 'ArrowRight' || e.key === 'd'){ pointer.x = clamp(pointer.x+step, 8, W-8); pointer.active = true; }
+  if(e.key === ' '){ e.preventDefault(); toggleBlend(); }
+  if(e.key === 'f' || e.key === 'F'){ fireLure(); }
+});
+
+/* ---------------- main loop ---------------- */
+let last = performance.now();
+window.__frames = 0;
+function loop(now){
+  window.__frames++;
+  const rawDt = Math.min(0.05, (now-last)/1000 || 0.016);
+  last = now;
+  update(rawDt * timeScale);
+  render();
+  requestAnimationFrame(loop);
+}
+player = newPlayer();
+$('bestLine').textContent = 'BEST SCORE: ' + best + (topStage > 0 ? '  \u00b7  TOP STAGE: ' + STAGES[topStage].name : '');
+seedWorld(); // lively reef behind the title screen
+updateHUD();
+requestAnimationFrame(loop);
+
+/* ---------------- debug / test hooks ---------------- */
+window.MIMIC = {
+  get time(){ return time; },
+  get state(){ return state; },
+  get score(){ return score; },
+  get best(){ return best; },
+  get hearts(){ return hearts; },
+  get chased(){ return chased; },
+  get player(){ return player; },
+  get fish(){ return fish; },
+  get stages(){ return STAGES; },
+  start: startGame,
+  debug: {
+    autoplay:false,
+    setTarget(x,y){ pointer.x=x; pointer.y=y; pointer.active=true; },
+    setTimeScale(s){ timeScale = s; },
+    teleport(x,y){ player.x=x; player.y=y; },
+    setStage(n){ player.stage=n; player.len=STAGES[n].len; player.growth=0; updateHUD(); },
+    blend(on){ toggleBlend(on); },
+    lure(){ fireLure(); },
+    spawnNear(){ spawnFish('edible'); const f=fish[fish.length-1]; f.x=player.x+10; f.y=player.y; return f; },
+  },
+};
+</script>
+</body>
+</html>
