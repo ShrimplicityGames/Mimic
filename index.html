@@ -174,7 +174,7 @@
    Eat smaller, dodge bigger, BLEND to sink & hide, LURE to hunt.
    Predators hunt fish too — and grow when they eat enough.
    ============================================================ */
-const W = 270, H = 480, WORLD = 2000, FLOOR = H - 24;
+const W = 270, H = 480, FLOOR = H - 24; // no WORLD width: the reef is endless, scenery is generated from world x
 const cv = document.getElementById('game');
 const ctx = cv.getContext('2d');
 
@@ -238,7 +238,7 @@ let chased = false, chaseWas = false;
 let bannerTimer = 0;
 let spawnTimer = 0;
 let shakeT = 0;
-let camX = 0;
+let camX = 0, camLook = 0; // camLook = eased look-ahead, so turning never snaps the camera
 let player, fish = [], parts = [], bubbles = [], decor = [];
 let schools = {}, schoolSeq = 1;
 let joy = { x:0, y:0, on:false };       // analog stick vector (-1..1)
@@ -279,6 +279,7 @@ const rand = (a,b)=>a+Math.random()*(b-a);
 const clamp = (v,a,b)=>v<a?a:v>b?b:v;
 const dist = (ax,ay,bx,by)=>Math.hypot(ax-bx, ay-by);
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function hash01(n){ const s = Math.sin(n*127.1 + 311.7)*43758.5453; return s - Math.floor(s); } // deterministic 0..1 from any world index, negative included
 function shade(hex, amt){ // amt -1..1, toward black / white
   const n = parseInt(hex.slice(1), 16);
   let r = (n>>16)&255, g = (n>>8)&255, b = n&255;
@@ -332,16 +333,16 @@ function spawnFish(forceTier, nearPlayer){
   // spawn position: near the player (seeding) or just off the camera's edge (side-scroller flow)
   let x, y = rand(46, H-52);
   if(nearPlayer){
-    x = clamp(player.x + rand(-120,120), 12, WORLD-12);
+    x = player.x + rand(-120,120);
     y = clamp(player.y + rand(-70,70), 44, H-50);
   } else if(tier === 'predator'){
     const side = Math.random() < 0.5 ? -1 : 1;
-    x = clamp(camX + (side < 0 ? -50 : W+50) + rand(-15,15), 12, WORLD-12);
-    if(dist(x,y,player.x,player.y) < 170) x = clamp(player.x + (player.x < WORLD/2 ? 1 : -1)*190, 12, WORLD-12);
+    x = camX + (side < 0 ? -80 : W+80) + rand(-15,15); // far enough out that even a shark's tail never pops into view
+    if(dist(x,y,player.x,player.y) < 170) x = player.x + side*190;
   } else {
     const side = Math.random() < 0.5 ? -1 : 1;
-    x = clamp(camX + (side < 0 ? -26 : W+26) + rand(-10,10), 12, WORLD-12);
-    if(dist(x,y,player.x,player.y) < 55) x = clamp(x + side*70, 12, WORLD-12);
+    x = camX + (side < 0 ? -42 : W+42) + rand(-10,10);
+    if(dist(x,y,player.x,player.y) < 55) x = x + side*70;
   }
   // schooling species often arrive as a group with a shared drifting anchor
   if(t.school && Math.random() < 0.55 && tier === 'edible'){
@@ -362,20 +363,18 @@ function spawnFish(forceTier, nearPlayer){
 }
 function seedWorld(){
   fish = []; parts = []; bubbles = []; schools = {}; schoolSeq = 1;
-  camX = clamp(player.x - W/2, 0, WORLD - W);
+  camX = player.x - W/2; camLook = 0; // snap: no slide-in at the start
   // a few edible fish right near the player so the first eat is instant
   for(let i=0;i<3;i++){
     const f = spawnFish('edible', true);
-    f.x = clamp(player.x + rand(-55,55), 12, WORLD-12);
+    f.x = player.x + rand(-55,55);
     f.y = clamp(player.y + rand(-45,45), 44, H-50);
     f.school = 0;
   }
   for(let i=0;i<9;i++) spawnFish('edible', true);
   for(let i=0;i<3;i++) spawnFish('neutral', true);
   spawnFish('predator');
-  // decor scattered along the whole scrolling reef
-  decor = [];
-  for(let i=0;i<110;i++) decor.push({ kind: pick(['rock','coral','weed']), x: rand(8,WORLD-8), s: rand(0.7,1.4), ph: rand(0,6) });
+  decor = []; // floor decor is procedural now (drawn from world x in render) — nothing to scatter, no far edge to run out of
 }
 function burst(x, y, color, n, spd){
   for(let i=0;i<n;i++){
@@ -552,7 +551,7 @@ function update(dt){
     player.vy = 0;
     const dvx = joy.x * 20;
     player.vx += (dvx - player.vx) * Math.min(1, dt*5);
-    player.x = clamp(player.x + player.vx*dt, 8, WORLD-8);
+    player.x = player.x + player.vx*dt; // endless reef: no side walls to hit
   } else {
     let dvx = 0, dvy = 0;
     const mag = Math.hypot(joy.x, joy.y);
@@ -560,7 +559,7 @@ function update(dt){
     const k = Math.min(1, dt*6);
     player.vx += (dvx - player.vx)*k;
     player.vy += (dvy - player.vy)*k;
-    player.x = clamp(player.x + player.vx*dt, 8, WORLD-8);
+    player.x = player.x + player.vx*dt; // endless reef: no side walls to hit
     player.y = clamp(player.y + player.vy*dt, 30, FLOOR - 6);
   }
   if(Math.abs(player.vx) > 6) player.dir = player.vx > 0 ? 1 : -1;
@@ -573,7 +572,14 @@ function update(dt){
   // you mid-hide (that was the bug: blend expired on the sand, then the swim
   // clamp yanked the player back up off the floor). It just tops itself up.
   player.blendMeter = Math.min(100, player.blendMeter + 14*dt);
-  camX = clamp(player.x - W/2 + player.dir*16, 0, WORLD - W);
+  // SEAMLESS CAMERA: the look-ahead eases toward the way you're facing instead
+  // of snapping ±16 the instant you turn (that snap was the visible "cut"),
+  // and the camera itself glides after you instead of being hard-locked to
+  // your position. No world edges exist anymore, so it never slams to a stop.
+  camLook += (player.dir*16 - camLook) * Math.min(1, dt*3.2);
+  const camTarget = player.x - W/2 + camLook;
+  camX += (camTarget - camX) * Math.min(1, dt*7);
+  if(Math.abs(camTarget - camX) > 220) camX = camTarget; // teleports snap, swimming never does
 
   // ---- schools drift as a group ----
   for(const id in schools){
@@ -584,11 +590,12 @@ function update(dt){
       const a = rand(0, Math.PI*2);
       s.vx = Math.cos(a)*16; s.vy = Math.sin(a)*7;
     }
-    s.x = clamp(s.x + s.vx*dt, 24, WORLD-24);
+    s.x = s.x + s.vx*dt;
     s.y = clamp(s.y + s.vy*dt, 52, H-84);
     s.ang += dt*0.35;
-    if(s.x <= 25 && s.vx < 0) s.vx = -s.vx;
-    if(s.x >= WORLD-25 && s.vx > 0) s.vx = -s.vx;
+    // no reef edges: a school that drifts far from you just turns back your way
+    if(s.x < player.x - 480 && s.vx < 0) s.vx = -s.vx;
+    if(s.x > player.x + 480 && s.vx > 0) s.vx = -s.vx;
   }
 
   // ---- fish ----
@@ -693,7 +700,7 @@ function update(dt){
     f.vx += (ax*sp - f.vx)*fk;
     f.vy += (ay*sp - f.vy)*fk;
     f.x += f.vx*dt; f.y += f.vy*dt;
-    f.x = clamp(f.x, 6, WORLD-6); f.y = clamp(f.y, 34, H-14);
+    f.y = clamp(f.y, 34, H-14); // x is unbounded — far fish are recycled by distance, not walls
     if(Math.abs(f.vx) > 4) f.dir = f.vx > 0 ? 1 : -1;
 
     // predator eats its prey on contact — and grows every few meals
@@ -751,8 +758,9 @@ function wanderSteer(f, dt, dp){
       f.tx = Math.cos(a); f.ty = Math.sin(a)*0.6;
     }
   }
-  if(f.x < 18) f.tx = Math.abs(f.tx);
-  if(f.x > WORLD-18) f.tx = -Math.abs(f.tx);
+  // far-wandering fish curve back toward the action instead of hitting a wall
+  if(f.x < player.x - 560) f.tx = Math.abs(f.tx);
+  if(f.x > player.x + 560) f.tx = -Math.abs(f.tx);
   if(f.y < 40) f.ty = Math.abs(f.ty);
   if(f.y > H-26) f.ty = -Math.abs(f.ty);
 }
@@ -771,7 +779,7 @@ function autopilot(){
     // run — but bias toward open water, never straight into a corner
     let fx = player.x + (player.x - threat.x)*1.2;
     let fy = player.y + (player.y - threat.y)*1.2;
-    fx = fx*0.6 + (WORLD/2)*0.4; fy = fy*0.6 + (H*0.5)*0.4;
+    fx = fx*0.6 + player.x*0.4; fy = fy*0.6 + (H*0.5)*0.4; // bias toward where you are — there is no world center anymore
     setJoyToward(fx, fy);
     if(td < 60 && player.blendMeter > 30) toggleBlend(true);
   } else {
@@ -1090,23 +1098,30 @@ function render(){
   g.addColorStop(0, '#0e5a7d'); g.addColorStop(0.55, '#083a56'); g.addColorStop(1, '#04263e');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
-  // light rays
+  // light rays: uniform 110px tiles drifting at a tenth of camera speed, so
+  // they slide gently as you swim and tile with no visible wrap point
   ctx.fillStyle = 'rgba(255,255,255,0.05)';
-  for(let i=0;i<3;i++){
-    const rx = 40 + i*80 + Math.sin(time*0.3 + i*2)*10;
+  for(let i=0;i<4;i++){
+    const span = 110*4;
+    let rx = (i*110 - camX*0.1 + Math.sin(time*0.3 + i*2)*6) % span; if(rx < 0) rx += span;
+    rx -= 60;
     ctx.beginPath(); ctx.moveTo(rx, 0); ctx.lineTo(rx+22, 0); ctx.lineTo(rx+52, H*0.7); ctx.lineTo(rx+8, H*0.7); ctx.closePath(); ctx.fill();
   }
 
-  // parallax rock silhouettes (drift at half camera speed)
+  // parallax rock silhouettes: anchored to parallax-world segments (46px of
+  // parallax space each), hashed per segment — they drift at half camera
+  // speed forever, each one different, none ever popping at a wrap point
   ctx.fillStyle = '#052a40';
-  for(let i=0;i<9;i++){
-    const span = W + 180;
-    let rx = (i*290 - camX*0.45) % span; if(rx < 0) rx += span;
-    rx -= 90;
-    const rh = 26 + (i*37)%30;
-    ctx.beginPath();
-    ctx.ellipse(rx, FLOOR+4, 44 + (i*23)%30, rh, 0, Math.PI, 0);
-    ctx.fill();
+  {
+    const px = camX*0.45, SEG = 46;
+    const k0 = Math.floor((px - 90)/SEG), k1 = Math.floor((px + W + 90)/SEG);
+    for(let k=k0;k<=k1;k++){
+      const rx = k*SEG - px;
+      const rh = 24 + hash01(k*3+1)*30;
+      ctx.beginPath();
+      ctx.ellipse(rx, FLOOR+4, 40 + hash01(k*3+2)*32, rh, 0, Math.PI, 0);
+      ctx.fill();
+    }
   }
 
   /* ---- world space ---- */
@@ -1129,9 +1144,13 @@ function render(){
     }
   }
 
-  // decor
-  for(const d of decor){
-    if(d.x < camX - 24 || d.x > camX + W + 24) continue;
+  // decor: procedural from world x — every 26px slot hashes to a kind, size
+  // and sway phase, so the same spot always grows the same decor, new decor
+  // flows in at the edges forever, and there is no "next area" to cut to
+  for(let slot = Math.floor((camX - 24)/26); slot*26 < camX + W + 24; slot++){
+    if(hash01(slot*7+3) < 0.34) continue; // gaps keep it natural, not a picket fence
+    const d = { kind: ['rock','coral','weed'][Math.floor(hash01(slot*7+4)*3)],
+                x: slot*26 + hash01(slot*7+5)*14, s: 0.7 + hash01(slot*7+6)*0.7, ph: hash01(slot*7+7)*6 };
     const x = d.x, y = FLOOR;
     if(d.kind === 'rock'){
       ctx.fillStyle = '#5d6b78';
@@ -1363,7 +1382,7 @@ window.MIMIC = {
     setTarget(x,y){ debugTarget = { x, y }; },
     setJoy(x,y){ joy.x = x; joy.y = y; },
     setTimeScale(s){ timeScale = s; },
-    teleport(x,y){ player.x = x; player.y = y; camX = clamp(player.x - W/2, 0, WORLD - W); },
+    teleport(x,y){ player.x = x; player.y = y; camX = player.x - W/2; camLook = 0; },
     setStage(n){ player.stage = n; player.len = STAGES[n].len; player.growth = 0; setResolution(n); updateHUD(); },
     blend(on){ toggleBlend(on); },
     restY(stage){ return blendRestY(stage === undefined ? player.stage : stage); },
