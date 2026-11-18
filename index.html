@@ -149,7 +149,7 @@
     <b>12 sizes</b> &mdash; and watch yourself evolve from 8-bit pixels to a real fish.</p>
     <div class="keys">
       <span>STICK</span> (bottom left) to swim<br>
-      <span>BLEND</span> &mdash; become a ground item, sink &amp; hide<br>
+      <span>BLEND</span> &mdash; become a ground item, sink &amp; hide (safe, no eating)<br>
       <span>LURE</span> &mdash; flash a lure, pull prey in close
     </div>
     <p id="bestLine">BEST SCORE: 0</p>
@@ -171,7 +171,7 @@
    A Spore-like shapeshift fish game. Single file, mobile-first.
    Side-scrolling reef, analog stick, 12 growth stages whose
    graphics evolve from chunky 8-bit to smooth realism.
-   Eat smaller, dodge bigger, BLEND to sink & hide, LURE to hunt.
+   Eat smaller, dodge bigger, BLEND to sink & hide (safe, but you can't eat), LURE to hunt.
    Predators hunt fish too — and grow when they eat enough.
    ============================================================ */
 const W = 270, H = 480, FLOOR = H - 24; // no WORLD width: the reef is endless, scenery is generated from world x
@@ -720,9 +720,10 @@ function update(dt){
 
     // collisions with the player
     const eatR = player.len*0.5 + f.len*0.4;
-    if((edible || apexEdible) && dp < eatR){ eatFish(f); continue; }
+    // camouflage tradeoff (Eli Nov 17): blended = safe but you can't eat
+    if((edible || apexEdible) && dp < eatR && !player.blend){ eatFish(f); continue; }
     const biteR = player.len*0.42 + f.len*0.32;
-    if(dangerous && dp < biteR && player.invuln <= 0){ hurtBy(f); if(state !== 'playing') return; }
+    if(dangerous && dp < biteR && player.invuln <= 0 && !player.blend){ hurtBy(f); if(state !== 'playing') return; }
   }
   fish = fish.filter(f => !f.dead);
   // prune empty schools
