@@ -4,6 +4,9 @@
 guppy: eat what's smaller than you, dodge what's bigger, and cheat the size
 ladder by shifting your appearance.
 
+Submitted to [Game Off 2026](https://itch.io/jam/game-off-2026) — play it on
+itch.io. Single file, no build step, no dependencies.
+
 ## How to play
 
 - **Analog stick** (bottom left) to swim — the reef scrolls sideways AND down.
@@ -31,50 +34,73 @@ ladder by shifting your appearance.
   what patrols there — you discover the depths by swimming into them. Depth
   is not a level lock: the size rule gates the deep naturally (bigger fish
   live down there, and you can't survive them until you've grown).
+- **PAUSE** (II button / P / Esc): pause the game, resume, restart, quit to
+  menu, mute, or swap control sides.
+- **SWAP CONTROL SIDES**: move the stick to the right side and the buttons
+  to the left, for left-handed players. Stick direction never changes: push
+  right to swim right.
 
 ## Growth — 20 stages, every one a real fish
 
 | Stage | Species | Size | Eats to grow | Blend form | Lure |
 |---|---|---|---|---|---|
-| 1 | Guppy | 10 | 6 | Pebble | Wiggle |
-| 2 | Betta | 11 | 8 | Pebble | Wiggle |
-| 3 | Goldfish | 13 | 9 | Coral | Morsel |
-| 4 | Bluegill | 15 | 11 | Coral | Morsel |
-| 5 | Angelfish | 17 | 12 | Seaweed | Glow Worm |
-| 6 | Discus | 19 | 14 | Seaweed | Glow Worm |
-| 7 | Oscar | 21 | 15 | Kelp | Angler Light |
-| 8 | Arowana | 24 | 17 | Kelp | Angler Light |
-| 9 | Gar | 28 | 18 | Anemone | Lantern |
-| 10 | Redtail Catfish | 31 | 20 | Anemone | Lantern |
-| 11 | Giant Snakehead | 35 | 21 | Shell | Siren Glow |
-| 12 | Peacock Bass | 40 | 23 | Shell | Siren Glow |
-| 13 | Arapaima | 46 | 24 | Driftwood | Hypno Pulse |
-| 14 | Mekong Giant Catfish | 52 | 26 | Driftwood | Hypno Pulse |
-| 15 | Sawfish | 59 | 27 | Boulder | Phantom |
-| 16 | Plesiosaur | 67 | 29 | Boulder | Phantom |
-| 17 | Dunkleosteus | 76 | 30 | Sunken Log | Mirage |
-| 18 | Mosasaurus | 86 | 32 | Sunken Log | Mirage |
-| 19 | Megalodon | 98 | 33 | Apex Rock | Giant Shadow |
-| 20 | Leviathan | 111 | — | Apex Rock | Giant Shadow |
+| 1 | Guppy | 24 | 6 | Pebble | Wiggle |
+| 2 | Betta | 29 | 8 | Pebble | Wiggle |
+| 3 | Goldfish | 35 | 9 | Coral | Morsel |
+| 4 | Bluegill | 42 | 11 | Coral | Morsel |
+| 5 | Angelfish | 49 | 12 | Seaweed | Glow Worm |
+| 6 | Discus | 57 | 14 | Seaweed | Glow Worm |
+| 7 | Oscar | 65 | 15 | Kelp | Angler Light |
+| 8 | Arowana | 74 | 17 | Kelp | Angler Light |
+| 9 | Gar | 83 | 18 | Anemone | Lantern |
+| 10 | Redtail Catfish | 92 | 20 | Anemone | Lantern |
+| 11 | Giant Snakehead | 102 | 21 | Shell | Siren Glow |
+| 12 | Peacock Bass | 112 | 23 | Shell | Siren Glow |
+| 13 | Arapaima | 122 | 24 | Driftwood | Hypno Pulse |
+| 14 | Mekong Giant Catfish | 132 | 26 | Driftwood | Hypno Pulse |
+| 15 | Sawfish | 142 | 27 | Boulder | Phantom |
+| 16 | Plesiosaur | 152 | 29 | Boulder | Phantom |
+| 17 | Dunkleosteus | 162 | 30 | Sunken Log | Mirage |
+| 18 | Mosasaurus | 172 | 32 | Sunken Log | Mirage |
+| 19 | Megalodon | 182 | 33 | Apex Rock | Giant Shadow |
+| 20 | Leviathan | 192 | — | Apex Rock | Giant Shadow |
 
 All 20 stages are photorealistic — every fish is a real photo cut-out,
 embedded as a base64 data URI. No 8-bit, no vector fish anywhere. Growing
-heals +1 heart. At Leviathan (stage 20) you are the apex: EVERYTHING is
-edible, including the bosses and the biggest predators — and everything
-flees from you. Progress saves to localStorage: best score, top stage.
+heals +1 heart. Smaller predators become edible from level 16; the giant
+predators (bosses) stay Leviathan-only. At Leviathan (stage 20) you are the
+apex: EVERYTHING is edible, including the bosses and the biggest predators —
+and everything flees from you. Progress saves to localStorage: best score,
+top stage.
+
+## What's in v6
+
+- **20 achievements** — First Bite to King of the Deep, tracked live with a
+  gold toast on unlock, persisted separately from the save.
+- **3 reef backgrounds** — default, Kelp Forest (Halfway to Monster), Abyss
+  (Leviathan Rising / winning).
+- **Silly Mode** — the food chain flips: you eat BIGGER fish, smaller fish
+  hunt you. Earned, not base — unlock "Holy Mackerel!" (eat 50 fish in
+  60 seconds) to turn it on.
+- **Main menu** — pixel-art reef, crowned shrimp "Shrimplicity Games" sign,
+  bubble-letter MIMIC title, chunky buttons, best score / top stage bar.
+- **Interactive tutorial** — teaches by doing (swim, eat, blend from a
+  predator, dash, lure), first run only, skippable, replayable from the menu.
+- **Pause screen, Shrimplicity Games branding, invertible control sides.**
+- **Smoother swimming** — 28-slice undulation, one continuous body.
+- **Fewer enemies** — spawn rate tuned down and verified by play.
 
 ## Sound
 
-- **Background music**: a slow generative underwater pad with sparse plucks,
-  synthesized live with WebAudio (no audio files). Starts on the START tap,
-  loops forever. **SND** button (top right) mutes music + SFX together.
+- **Background music**: "Unseen Horrors" by Kevin MacLeod (CC BY), embedded
+  as an MP3 data URI, looping. **SND** button (top right) mutes music + SFX
+  together.
 - **SFX**: soft WebAudio tones and filtered noise (sine/triangle only, gentle
   attack ramps) — no clicks, no pops, no HTMLAudioElement main-thread blocks.
 
 ## Play locally
 
 ```sh
-cd mimic-prototype/scratch/mimic
 python3 -m http.server 8901
 # open http://localhost:8901/ (phone-size viewport, 430x932)
 ```
@@ -92,10 +118,11 @@ sources live in `art/` (stage01–stage20.png, boss0–boss2.png, wild_*.png).
 `teleport`, `setStage`, `blend`, `lure`, `dash`, `spawnNear`, `photoReady`,
 `photoInfo`, `usingPhoto`, `musicOn`, `musicGain`, `spawnTargets`).
 
-QA: `qa-v4.py` + `qa-v4b.py` / `qa-v4c.py` / `qa-v4d.py` (20-stage photos,
-music + mute, soft SFX, Leviathan eats everything incl. bosses, no zone
-labels/lines, dash, vertical scroll, depth darkness, depth spawning, bosses,
-blend rule, no console errors).
+QA: headless Playwright (zero console/page errors, dash/eat/blend verified,
+achievements, backgrounds, silly mode, menu, pause, tutorial, swap sides,
+spawn rate, level-16 predators, smooth swim, music + mute, Leviathan eats
+everything incl. bosses, no zone labels/lines). Real-device iPhone testing
+by the developer.
 
 ## Why Shiftfin was scrapped (do not repeat)
 
